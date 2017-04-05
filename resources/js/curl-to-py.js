@@ -124,36 +124,29 @@ function curlToPy(curl) {
         return result;
     }
 
-    // extractRelevantPieces returns an object with relevant pieces
-    // extracted from cmd, the parsed command. This accounts for
-    // multiple flags that do the same thing and return structured
-    // data that makes it easy to spit out py code.
-    function extractRelevantPieces(cmd) {
-        var relevant = {
-            url: "",
-            method: "",
-            headers: {},
-            data: {}
-        };
+    function getBasicAuth(cmd) {
+        // between -u and --user, choose the long form...
+        var basicAuthString = "";
+        if (cmd.user && cmd.user.length > 0)
+            basicAuthString = cmd.user[cmd.user.length - 1];
+        else if (cmd.u && cmd.u.length > 0)
+            basicAuthString = cmd.u[cmd.u.length - 1];
+        var basicAuthSplit = basicAuthString.indexOf(":");
+        if (basicAuthSplit > -1) {
+            return basicauth = {
+                user: basicAuthString.substr(0, basicAuthSplit),
+                pass: basicAuthString.substr(basicAuthSplit + 1)
+            };
+        } else {
+            return basicAuth = {
+                user: basicAuthString,
+                pass: "<PASSWORD>"
+            };
+        }
+    }
 
-        // prefer --url over unnamed parameter, if it exists; keep first one only
-        if (cmd.url && cmd.url.length > 0)
-            relevant.url = cmd.url[0];
-        else if (cmd._.length > 1)
-            relevant.url = cmd._[1]; // position 1 because index 0 is the curl command itself
-
-        // gather the headers together
-        relevant.headers = getHeadersDict(cmd);
-        // set method to HEAD?
-        if (cmd.I || cmd.head)
-            relevant.method = "HEAD";
-
-        // between -X and --request, prefer the long form I guess
-        if (cmd.request && cmd.request.length > 0)
-            relevant.method = cmd.request[cmd.request.length - 1].toUpperCase();
-        else if (cmd.X && cmd.X.length > 0)
-            relevant.method = cmd.X[cmd.X.length - 1].toUpperCase(); // if multiple, use last (according to curl docs)
-
+    function getDataDict(cmd, relevant) {
+        data = {};
         // join multiple request body data, if any
         var dataAscii = [];
         var dataFiles = [];
@@ -180,28 +173,45 @@ function curlToPy(curl) {
         if (cmd.data)
             loadData(cmd.data);
         if (dataAscii.length > 0)
-            relevant.data.ascii = dataAscii.join("&");
+            data.ascii = dataAscii.join("&");
         if (dataFiles.length > 0)
-            relevant.data.files = dataFiles;
+            data.files = dataFiles;
+        return data;
+    }
 
-        // between -u and --user, choose the long form...
-        var basicAuthString = "";
-        if (cmd.user && cmd.user.length > 0)
-            basicAuthString = cmd.user[cmd.user.length - 1];
-        else if (cmd.u && cmd.u.length > 0)
-            basicAuthString = cmd.u[cmd.u.length - 1];
-        var basicAuthSplit = basicAuthString.indexOf(":");
-        if (basicAuthSplit > -1) {
-            relevant.basicauth = {
-                user: basicAuthString.substr(0, basicAuthSplit),
-                pass: basicAuthString.substr(basicAuthSplit + 1)
-            };
-        } else {
-            relevant.basicAuth = {
-                user: basicAuthString,
-                pass: "<PASSWORD>"
-            };
-        }
+    // extractRelevantPieces returns an object with relevant pieces
+    // extracted from cmd, the parsed command. This accounts for
+    // multiple flags that do the same thing and return structured
+    // data that makes it easy to spit out py code.
+    function extractRelevantPieces(cmd) {
+        var relevant = {
+            url: "",
+            method: "",
+            headers: {},
+            data: {}
+        };
+
+        // prefer --url over unnamed parameter, if it exists; keep first one only
+        if (cmd.url && cmd.url.length > 0)
+            relevant.url = cmd.url[0];
+        else if (cmd._.length > 1)
+            relevant.url = cmd._[1]; // position 1 because index 0 is the curl command itself
+
+        // gather the headers together
+        relevant.headers = getHeadersDict(cmd);
+
+        // set method to HEAD?
+        if (cmd.I || cmd.head)
+            relevant.method = "HEAD";
+
+        // between -X and --request, prefer the long form I guess
+        if (cmd.request && cmd.request.length > 0)
+            relevant.method = cmd.request[cmd.request.length - 1].toUpperCase();
+        else if (cmd.X && cmd.X.length > 0)
+            relevant.method = cmd.X[cmd.X.length - 1].toUpperCase(); // if multiple, use last (according to curl docs)
+
+        relevant.data = getDataDict(cmd, relevant);
+        relevant.basicAuth = getBasicAuth(cmd);
 
         // default to GET if nothing else specified
         if (!relevant.method)
