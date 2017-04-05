@@ -33,7 +33,7 @@ function curlToPy(curl) {
     ];
 
     if (!curl.trim())
-        return;
+        return "empty input";
     var cmd = parseCommand(curl, {
         boolFlags: boolOptions
     });
@@ -63,7 +63,43 @@ function curlToPy(curl) {
     // renderComplex renders py code that requires making a http.Request.
     function renderComplex(req) {
         var py = "";
-        return py;
+        headers = "headers = {\n";
+        for (var name in req.headers) {
+            headers += '    \'' + name + '\': \'' + req.headers[name] + '\',\n';
+        }
+        headers += "}\n";
+        data = "data = data\n";
+        return py + "\n" + headers + "\n" + data;
+    }
+
+    // getHeaders generate a dict which contains header name and header value
+    function getHeaders(cmd) {
+        var result = {};
+        var colonIndex;
+        var header;
+        var headerName;
+        var headerValue;
+
+        if (cmd.H) {
+            for (var i = 0; i < cmd.H.length; i++) {
+                header = cmd.H[i];
+                console.log(header);
+                colonIndex = header.indexOf(':');
+                headerName = header.substring(0, colonIndex);
+                headerValue = header.substring(colonIndex + 1).trim();
+                result[headerName] = headerValue;
+            }
+        }
+        if (cmd.header) {
+            for (i = 0; i < cmd.H.length; i++) {
+                header = cmd.header[i];
+                colonIndex = header.indexOf(':');
+                headerName = header.substring(0, colonIndex);
+                headerValue = header.substring(colonIndex + 1).trim();
+                result[headerName] = headerValue;
+            }
+        }
+        return result;
     }
 
     // extractRelevantPieces returns an object with relevant pieces
@@ -74,7 +110,7 @@ function curlToPy(curl) {
         var relevant = {
             url: "",
             method: "",
-            headers: [],
+            headers: {},
             data: {}
         };
 
@@ -85,11 +121,7 @@ function curlToPy(curl) {
             relevant.url = cmd._[1]; // position 1 because index 0 is the curl command itself
 
         // gather the headers together
-        if (cmd.H)
-            relevant.headers = relevant.headers.concat(cmd.H);
-        if (cmd.header)
-            relevant.headers = relevant.headers.concat(cmd.header);
-
+        relevant.headers = getHeaders(cmd);
         // set method to HEAD?
         if (cmd.I || cmd.head)
             relevant.method = "HEAD";
@@ -116,7 +148,7 @@ function curlToPy(curl) {
                 }
             }
             if (!hasContentType)
-                relevant.headers.push("Content-Type: application/x-www-form-urlencoded");
+                relevant.headers["Content-Type"] = "application/x-www-form-urlencoded";
 
             for (var i = 0; i < d.length; i++) {
                 if (d[i].length > 0 && d[i][0] == "@")
@@ -167,163 +199,166 @@ function curlToPy(curl) {
     }
 }
 
-    function parseCommand(input, options) {
-        if (typeof options === 'undefined') {
-            options = {};
-        }
+function parseCommand(input, options) {
+    if (typeof options === 'undefined') {
+        options = {};
+    }
 
-        var result = {
-                _: []
-            }, // what we return
-            cursor = 0, // iterator position
-            token = ""; // current token (word or quoted string) being built
+    var result = {
+            _: []
+        }, // what we return
+        cursor = 0, // iterator position
+        token = ""; // current token (word or quoted string) being built
 
-        // trim leading $ or # that may have been left in
-        input = input.trim();
-        if (input.length > 2 && (input[0] == '$' || input[0] == '#') && whitespace(input[1]))
-            input = input.substr(1).trim();
+    // trim leading $ or # that may have been left in
+    input = input.trim();
+    if (input.length > 2 && (input[0] == '$' || input[0] == '#') && whitespace(input[1]))
+        input = input.substr(1).trim();
 
-        for (cursor = 0; cursor < input.length; cursor++) {
-            skipWhitespace();
-            if (input[cursor] == "-") {
-                flagSet();
-            } else {
-                unflagged();
-            }
-        }
-
-        return result;
-
-
-
-
-        // flagSet handles flags and it assumes the current cursor
-        // points to a first dash.
-        function flagSet() {
-            // long flag form?
-            if (cursor < input.length - 1 && input[cursor + 1] == "-") {
-                return longFlag();
-            }
-
-            // if not, parse short flag form
-            return shortFlag();
-        }
-
-        // longFlag consumes a "--long-flag" sequence and
-        // stores it in result.
-        function longFlag() {
-            cursor += 2; // skip leading dashes
-            var flagName = nextString("=");
-            if (boolFlag(flagName))
-                result[flagName] = true;
-            else {
-                if (typeof result[flagName] == 'undefined') {
-                    result[flagName] = [];
-                }
-                if (Array.isArray(result[flagName])) {
-                    result[flagName].push(nextString());
-                }
-            }
-        }
-
-        function shortFlag() {
-            cursor++; // skip leading dash
-            while (cursor < input.length && !whitespace(input[cursor])) {
-                var flagName = input[cursor];
-                if (typeof result[flagName] == 'undefined') {
-                    result[flagName] = [];
-                }
-                cursor++; // skip the flag name
-                if (boolFlag(flagName))
-                    result[flagName] = true;
-                else if (Array.isArray(result[flagName]))
-                    result[flagName].push(nextString());
-            }
-        }
-
-        // unflagged consumes the next string as an unflagged value,
-        // storing it in the result.
-        function unflagged() {
-            result._.push(nextString());
-        }
-
-        // boolFlag returns whether a flag is known to be boolean type
-        function boolFlag(flag) {
-            if (Array.isArray(options.boolFlags)) {
-                for (var i = 0; i < options.boolFlags.length; i++) {
-                    if (options.boolFlags[i] == flag)
-                        return true;
-                }
-            }
-            return false;
-        }
-
-        // nextString skips any leading whitespace and consumes the next
-        // space-delimited string value and returns it. If endChar is set,
-        // it will be used to determine the end of the string. Normally just
-        // unescaped whitespace is the end of the string, but endChar can
-        // be used to specify another end-of-string. This function honors \
-        // as an escape character and does not include it in the value, except
-        // in the special case of the \$ sequence, the backslash is retained
-        // so other code can decide whether to treat as an env var or not.
-        function nextString(endChar) {
-            skipWhitespace();
-
-            var str = "";
-
-            var quoted = false,
-                quoteCh = "",
-                escaped = false;
-
-            for (; cursor < input.length; cursor++) {
-                if (quoted) {
-                    if (input[cursor] == quoteCh && !escaped) {
-                        quoted = false;
-                        continue;
-                    }
-                }
-                if (!quoted) {
-                    if (!escaped) {
-                        if (whitespace(input[cursor])) {
-                            return str;
-                        }
-                        if (input[cursor] == '"' || input[cursor] == "'") {
-                            quoted = true;
-                            quoteCh = input[cursor];
-                            cursor++;
-                        }
-                        if (endChar && input[cursor] == endChar) {
-                            cursor++; // skip the endChar
-                            return str;
-                        }
-                    }
-                }
-                if (!escaped && input[cursor] == "\\") {
-                    escaped = true;
-                    // skip the backslash unless the next character is $
-                    if (!(cursor < input.length - 1 && input[cursor + 1] == '$'))
-                        continue;
-                }
-
-                str += input[cursor];
-                escaped = false;
-            }
-
-            return str;
-        }
-
-        // skipWhitespace skips whitespace between tokens, taking into account escaped whitespace.
-        function skipWhitespace() {
-            for (; cursor < input.length; cursor++) {
-                while (input[cursor] == "\\" && (cursor < input.length - 1 && whitespace(input[cursor + 1])))
-                    cursor++;
-                if (!whitespace(input[cursor]))
-                    break;
-            }
-        }
-
-        // whitespace returns true if ch is a whitespace character.
-        function whitespace(ch) {
-            return ch == " " || ch == "\t" || ch == "\n" || ch == "\r";
+    for (cursor = 0; cursor < input.length; cursor++) {
+        skipWhitespace();
+        if (input[cursor] == "-") {
+            flagSet();
+        } else {
+            unflagged();
         }
     }
+
+    return result;
+
+    // isLongFalg return true is input length is larger than cursor and
+    // come with a dash
+    function isLongFalg() {
+        return cursor < input.length - 1 && input[cursor + 1] == "-";
+    }
+
+    // flagSet handles flags and it assumes the current cursor
+    // points to a first dash.
+    function flagSet() {
+        // long flag form?
+        if (isLongFalg()) {
+            return longFlag();
+        }
+
+        // if not, parse short flag form
+        return shortFlag();
+    }
+
+    // longFlag consumes a "--long-flag" sequence and
+    // stores it in result.
+    function longFlag() {
+        cursor += 2; // skip leading dashes
+        var flagName = nextString("=");
+        if (boolFlag(flagName))
+            result[flagName] = true;
+        else {
+            if (typeof result[flagName] == 'undefined') {
+                result[flagName] = [];
+            }
+            if (Array.isArray(result[flagName])) {
+                result[flagName].push(nextString());
+            }
+        }
+    }
+
+    function shortFlag() {
+        cursor++; // skip leading dash
+        while (cursor < input.length && !whitespace(input[cursor])) {
+            var flagName = input[cursor];
+            if (typeof result[flagName] == 'undefined') {
+                result[flagName] = [];
+            }
+            cursor++; // skip the flag name
+            if (boolFlag(flagName))
+                result[flagName] = true;
+            else if (Array.isArray(result[flagName]))
+                result[flagName].push(nextString());
+        }
+    }
+
+    // unflagged consumes the next string as an unflagged value,
+    // storing it in the result.
+    function unflagged() {
+        result._.push(nextString());
+    }
+
+    // boolFlag returns whether a flag is known to be boolean type
+    function boolFlag(flag) {
+        if (Array.isArray(options.boolFlags)) {
+            for (var i = 0; i < options.boolFlags.length; i++) {
+                if (options.boolFlags[i] == flag)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    // nextString skips any leading whitespace and consumes the next
+    // space-delimited string value and returns it. If endChar is set,
+    // it will be used to determine the end of the string. Normally just
+    // unescaped whitespace is the end of the string, but endChar can
+    // be used to specify another end-of-string. This function honors \
+    // as an escape character and does not include it in the value, except
+    // in the special case of the \$ sequence, the backslash is retained
+    // so other code can decide whether to treat as an env var or not.
+    function nextString(endChar) {
+        skipWhitespace();
+
+        var str = "";
+
+        var quoted = false,
+            quoteCh = "",
+            escaped = false;
+
+        for (; cursor < input.length; cursor++) {
+            if (quoted) {
+                if (input[cursor] == quoteCh && !escaped) {
+                    quoted = false;
+                    continue;
+                }
+            }
+            if (!quoted) {
+                if (!escaped) {
+                    if (whitespace(input[cursor])) {
+                        return str;
+                    }
+                    if (input[cursor] == '"' || input[cursor] == "'") {
+                        quoted = true;
+                        quoteCh = input[cursor];
+                        cursor++;
+                    }
+                    if (endChar && input[cursor] == endChar) {
+                        cursor++; // skip the endChar
+                        return str;
+                    }
+                }
+            }
+            if (!escaped && input[cursor] == "\\") {
+                escaped = true;
+                // skip the backslash unless the next character is $
+                if (!(cursor < input.length - 1 && input[cursor + 1] == '$'))
+                    continue;
+            }
+
+            str += input[cursor];
+            escaped = false;
+        }
+
+        return str;
+    }
+
+    // skipWhitespace skips whitespace between tokens, taking into account escaped whitespace.
+    function skipWhitespace() {
+        for (; cursor < input.length; cursor++) {
+            while (input[cursor] == "\\" && (cursor < input.length - 1 && whitespace(input[cursor + 1])))
+                cursor++;
+            if (!whitespace(input[cursor]))
+                break;
+        }
+    }
+
+    // whitespace returns true if ch is a whitespace character.
+    function whitespace(ch) {
+        return ch == " " || ch == "\t" || ch == "\n" || ch == "\r";
+    }
+}
