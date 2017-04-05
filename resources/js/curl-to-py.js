@@ -70,13 +70,13 @@ function curlToPy(curl) {
 
         py += "requests." + req.method.toLowerCase() + '(\'' + req.url + '\'';
         if (headers != "") {
-            py += ', headers = headers, ';
+            py += ', headers = headers';
         }
         if (data != "") {
-            py += ', data = data, ';
+            py += ', data = data';
         }
         if (req.basicAuth != undefined) {
-            py += 'auth=(\'' + req.basicAuth.user + '\',\'' + req.basicAuth.pass + ")";
+            py += ', auth=(\'' + req.basicAuth.user + '\',\'' + req.basicAuth.pass + ")";
         }
         py += ")";
         return py;
@@ -151,11 +151,13 @@ function curlToPy(curl) {
                 user: basicAuthString.substr(0, basicAuthSplit),
                 pass: basicAuthString.substr(basicAuthSplit + 1)
             };
-        } else {
+        } else if (basicAuthString != "") {
             return basicAuth = {
                 user: basicAuthString,
                 pass: "<PASSWORD>"
             };
+        } else {
+            return undefined;
         }
     }
 
