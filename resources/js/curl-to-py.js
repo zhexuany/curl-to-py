@@ -62,19 +62,18 @@ function curlToPy(curl) {
 
     // renderComplex renders py code that requires making a http.Request.
     function renderComplex(req) {
-        var py = "";
-        headers = "headers = {\n";
-        for (var name in req.headers) {
-            headers += '    \'' + name + '\': \'' + req.headers[name] + '\',\n';
-        }
-        headers += "}\n";
+        var py = "import requests\n\n";
         data = "data = data\n";
-        return py + "\n" + headers + "\n" + getDataStr(req.data);
+        py += "\n" + getHeadersStr(req) + "\n" + getDataStr(req.data);
+        return py;
     }
 
     function getDataStr(data) {
         dataStr = 'data = [\n';
         dataAsciis = data.ascii.split("&");
+        if (dataAsciis.length == 1) {
+            return 'data = \'' + dataAsciis[0] + '\'';
+        }
         for (i = 0; i < dataAsciis.length; i++) {
             equalSignIdx = dataAsciis[i].indexOf('=');
             key = dataAsciis[i].substring(0, equalSignIdx);
@@ -85,8 +84,19 @@ function curlToPy(curl) {
         return dataStr;
     }
 
-    // getHeaders generate a dict which contains header name and header value
-    function getHeaders(cmd) {
+    function getHeadersStr(req) {
+        if (Object.keys(req.headers) == 0)
+            return "";
+        headers = "headers = {\n";
+        for (var name in req.headers) {
+            headers += '    \'' + name + '\': \'' + req.headers[name] + '\',\n';
+        }
+        headers += "}\n";
+        return headers;
+    }
+
+    // getHeadersDict generate a dict which contains header name and header value
+    function getHeadersDict(cmd) {
         var result = {};
         var colonIndex;
         var header;
@@ -133,7 +143,7 @@ function curlToPy(curl) {
             relevant.url = cmd._[1]; // position 1 because index 0 is the curl command itself
 
         // gather the headers together
-        relevant.headers = getHeaders(cmd);
+        relevant.headers = getHeadersDict(cmd);
         // set method to HEAD?
         if (cmd.I || cmd.head)
             relevant.method = "HEAD";
