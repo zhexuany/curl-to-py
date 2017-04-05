@@ -28,5 +28,5 @@ Yes, if you convice that falg is very important. Or you can do it yourself.
 
 ### Credits
 
-curl-to-Py is inspired by [curl-to-Go](https://twitter.com/mholt6).
+curl-to-Py is inspired by [curl-to-Go](https://github.com/mholt/curl-to-go).
 
