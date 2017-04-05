@@ -83,7 +83,13 @@ function curlToPy(curl) {
     }
 
     function getDataStr(data) {
-        dataStr = 'data = [\n';
+        dataStr = '';
+        dataFiles = data.files;
+        if (dataFiles != undefined) {
+            return dataStr + 'data = open(\'' + dataFiles + '\')\n';
+        }
+
+        dataStr += 'data = [\n';
         dataAsciis = data.ascii.split("&");
         if (dataAsciis.length == 1) {
             return 'data = \'' + dataAsciis[0] + '\'';
@@ -191,7 +197,7 @@ function curlToPy(curl) {
         if (dataAscii.length > 0)
             data.ascii = dataAscii.join("&");
         if (dataFiles.length > 0)
-            data.files = dataFiles;
+            data.files = dataFiles.join("&");
         return data;
     }
 
