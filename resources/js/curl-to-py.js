@@ -140,15 +140,11 @@ function curlToPy(curl) {
                 relevant.method = "POST";
 
             // curl adds a default Content-Typ header if not set explicitly
-            var hasContentType = false;
-            for (var i = 0; i < relevant.headers.length; i++) {
-                if (relevant.headers[i].indexOf("Content-Type") == 0) {
-                    hasContentType = true;
-                    break;
-                }
-            }
-            if (!hasContentType)
+            if (relevant.headers["Content-Type"] != "") {
+                hasContentType = true;
+            } else {
                 relevant.headers["Content-Type"] = "application/x-www-form-urlencoded";
+            }
 
             for (var i = 0; i < d.length; i++) {
                 if (d[i].length > 0 && d[i][0] == "@")
