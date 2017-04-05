@@ -62,9 +62,23 @@ function curlToPy(curl) {
 
     // renderComplex renders py code that requires making a http.Request.
     function renderComplex(req) {
-        var py = "import requests\n\n";
+        var py = "import requests\n";
         data = "data = data\n";
-        py += "\n" + getHeadersStr(req) + "\n" + getDataStr(req.data);
+        headers = getHeadersStr(req);
+        data = getDataStr(req.data);
+        py += "\n" + headers + "\n" + data + "\n";
+
+        py += "requests." + req.method.toLowerCase() + '(\'' + req.url + '\'';
+        if (headers != "") {
+            py += ', headers = headers, ';
+        }
+        if (data != "") {
+            py += ', data = data, ';
+        }
+        if (req.basicAuth != undefined) {
+            py += 'auth=(\'' + req.basicAuth.user + '\',\'' + req.basicAuth.pass + ")";
+        }
+        py += ")";
         return py;
     }
 
