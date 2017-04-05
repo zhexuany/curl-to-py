@@ -96,7 +96,6 @@ function curlToPy(curl) {
         if (cmd.H) {
             for (var i = 0; i < cmd.H.length; i++) {
                 header = cmd.H[i];
-                console.log(header);
                 colonIndex = header.indexOf(':');
                 headerName = header.substring(0, colonIndex);
                 headerValue = header.substring(colonIndex + 1).trim();
