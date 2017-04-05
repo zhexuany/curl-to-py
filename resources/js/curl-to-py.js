@@ -43,7 +43,7 @@ function curlToPy(curl) {
 
     var req = extractRelevantPieces(cmd);
 
-    if (req.headers.length == 0 && !req.data.ascii && !req.data.files && !req.basicauth) {
+    if (Object.keys(req.headers).length == 0 && !req.data.ascii && !req.data.files && !req.basicauth) {
         return promo + "\n" + renderSimple(req.method, req.url);
     }
     return promo + "\n\n" + renderComplex(req);
