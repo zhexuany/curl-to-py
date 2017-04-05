@@ -69,7 +69,20 @@ function curlToPy(curl) {
         }
         headers += "}\n";
         data = "data = data\n";
-        return py + "\n" + headers + "\n" + data;
+        return py + "\n" + headers + "\n" + getDataStr(req.data);
+    }
+
+    function getDataStr(data) {
+        dataStr = 'data = [\n';
+        dataAsciis = data.ascii.split("&");
+        for (i = 0; i < dataAsciis.length; i++) {
+            equalSignIdx = dataAsciis[i].indexOf('=');
+            key = dataAsciis[i].substring(0, equalSignIdx);
+            value = dataAsciis[i].substring(equalSignIdx + 1).trim();
+            dataStr += '  (\'' + key + '\', \'' + value + '\'),\n';
+        }
+        dataStr += "]\n";
+        return dataStr;
     }
 
     // getHeaders generate a dict which contains header name and header value
