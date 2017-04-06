@@ -4,7 +4,8 @@ curl-to-Py  [![Built with Spacemacs](https://cdn.rawgit.com/syl20bnr/spacemacs/4
 curl-to-Py is a tool to instantly convert [curl](http://curl.haxx.se) commands to Python code in the browser. It does *not* guarantee high-fidelity conversions, but it's good enough for most API docs that have curl samples.
 
 ### Status
-This project is still under developing. Please be patient!
+This project is working now. You can paly around with it via the website below. If you find any bug or you have some advice, please
+file an issue. 
 
 ### Try it
 
